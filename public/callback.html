@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaGear - Order Status</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navigation Header -->
+    <header class="header-nav">
+        <a href="/" class="brand-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-red)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Nova<span>Gear</span>
+        </a>
+        <nav class="nav-links">
+            <a href="/">Storefront</a>
+            <a href="/config.html">Credentials Settings</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="status-container" id="statusContainer">
+            <!-- Loading state -->
+            <div style="text-align: center; margin-top: 50px;">
+                <h2 style="color: var(--text-secondary)">Retrieving transaction result...</h2>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function renderTransactionResult() {
+            try {
+                // Parse query parameters from URL (Stateless Callback display)
+                const params = new URLSearchParams(window.location.search);
+                const status = params.get('status');
+                
+                if (!status) {
+                    document.getElementById('statusContainer').innerHTML = `
+                        <div class="status-badge failed">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"></path></svg>
+                        </div>
+                        <h1 class="status-title">No Transaction Found</h1>
+                        <p class="status-message">We couldn't retrieve the details of your last transaction session.</p>
+                        <div class="btn-group">
+                            <a href="/" class="btn-checkout" style="display:inline-block; width: auto; text-decoration:none;">Go back to storefront</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const isSuccess = status === 'SUCCESS';
+                const code = params.get('code') || 'N/A';
+                const msg = params.get('msg') || 'N/A';
+                const rrn = params.get('rrn') || 'N/A';
+                const amount = params.get('amount') || '0';
+                const txnRef = params.get('txnRef') || 'N/A';
+                const type = params.get('type') || 'N/A';
+                const receivedHash = params.get('receivedHash') || 'N/A';
+                const computedHash = params.get('computedHash') || 'N/A';
+                const verified = params.get('verified') === 'true';
+
+                const paymentMethodNames = {
+                    'MWALLET': 'JazzCash Mobile Wallet',
+                    'MPAY': 'Credit / Debit Card',
+                    'OTC': 'Voucher / Shop Payment'
+                };
+
+                let contentHtml = '';
+
+                if (isSuccess) {
+                    contentHtml += `
+                        <div class="status-badge success">
+                            <svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>
+                        </div>
+                        <h1 class="status-title">Payment Successful</h1>
+                        <p class="status-message">Thank you for your order! Your payment was processed successfully in the sandbox environment.</p>
+                    `;
+                    localStorage.removeItem('cart');
+                } else {
+                    contentHtml += `
+                        <div class="status-badge failed">
+                            <svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+                        </div>
+                        <h1 class="status-title">Payment Failed</h1>
+                        <p class="status-message">The transaction could not be completed. Details of the failure are displayed below.</p>
+                    `;
+                }
+
+                const amountInPkr = amount ? (parseFloat(amount) / 100) : 0;
+                const pMethod = paymentMethodNames[type] || 'JazzCash';
+
+                contentHtml += `
+                    <div class="receipt-card">
+                        <div class="receipt-row">
+                            <span>Transaction Ref No</span>
+                            <span>${txnRef}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Payment Method</span>
+                            <span>${pMethod}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Settlement Amount</span>
+                            <span style="color: #fff; font-weight: 700;">PKR ${amountInPkr.toLocaleString()}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Retrieval Ref No (RRN)</span>
+                            <span>${rrn}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Response Code</span>
+                            <span style="font-family: monospace; font-weight: 700; color: ${isSuccess ? 'var(--accent-green)' : 'var(--accent-red)'}">${code}</span>
+                        </div>
+                        <div class="receipt-row">
+                            <span>Response Message</span>
+                            <span>${msg}</span>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <a href="/" class="btn-checkout" style="display:inline-block; width: auto; text-decoration:none; padding: 12px 30px;">Return to Storefront</a>
+                        <a href="/config.html" class="btn-secondary">Configure Credentials</a>
+                    </div>
+                `;
+
+                const hashStatusClass = verified ? 'verified' : 'unverified';
+                const hashStatusText = verified ? 'Verified Authentic' : 'Verification Failed (Tampered / Config Error)';
+                
+                contentHtml += `
+                    <div class="debug-panel">
+                        <div class="debug-header">
+                            <h3>🔍 Sandbox Debug Logger</h3>
+                            <div class="debug-badge ${hashStatusClass}">${hashStatusText}</div>
+                        </div>
+                        <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+                            When redirection occurs, JazzCash sends back a secure hash. We calculate the HMAC-SHA256 signature server-side using your stored integrity salt to verify the postback's authenticity.
+                        </p>
+                        
+                        <div class="debug-section-title">Hash Verification Details</div>
+                        <pre>Received Hash:  ${receivedHash}\nComputed Hash:  ${computedHash}\nVerification:   ${verified ? 'MATCHED (Signature OK)' : 'MISMATCHED (Signature FAILED)'}</pre>
+                    </div>
+                `;
+
+                document.getElementById('statusContainer').innerHTML = contentHtml;
+
+            } catch (err) {
+                console.error('Error rendering transaction results:', err);
+                document.getElementById('statusContainer').innerHTML = `
+                    <div class="status-badge failed">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"></path></svg>
+                    </div>
+                    <h1 class="status-title">System Error</h1>
+                    <p class="status-message">An error occurred while parsing transaction details.</p>
+                `;
+            }
+        }
+
+        window.onload = renderTransactionResult;
+    </script>
+</body>
+</html>

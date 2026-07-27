@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaGear - Secure Checkout</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navigation Header -->
+    <header class="header-nav">
+        <a href="/" class="brand-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-red)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Nova<span>Gear</span>
+        </a>
+        <nav class="nav-links">
+            <a href="/">Storefront</a>
+            <a href="/config.html">Credentials Settings</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-section" style="margin-bottom: 2rem;">
+            <h1>Checkout</h1>
+            <p>Confirm your purchase details and select your payment method.</p>
+        </section>
+
+        <div class="checkout-container">
+            <!-- Left Panel: Billing & Payment Method Form -->
+            <div class="checkout-card">
+                <h2>1. Customer Information</h2>
+                <form id="checkoutForm" action="/checkout/redirect" method="POST">
+                    <input type="hidden" name="amount" id="formAmount" value="0">
+                    <input type="hidden" name="paymentMethod" id="formPaymentMethod" value="MWALLET">
+                    <input type="hidden" name="merchantId" id="formMerchantId">
+                    <input type="hidden" name="password" id="formPassword">
+                    <input type="hidden" name="integritySalt" id="formIntegritySalt">
+                    <input type="hidden" name="portalUrl" id="formPortalUrl">
+
+                    <div class="form-group">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" name="fullName" class="form-control" placeholder="E.g., Hamza Hussain" required value="Hamza Hussain">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" class="form-control" placeholder="E.g., test@gmail.com" required value="test@gmail.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mobileNo">Mobile Number (Format: 03xxxxxxxxx)</label>
+                        <input type="tel" id="mobileNo" name="mobileNo" class="form-control" pattern="03[0-9]{9}" placeholder="E.g., 03001234567" required value="03001234567">
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; display: block;">This mobile number is required by JazzCash for sending notifications/verification.</span>
+                    </div>
+
+                    <h2 style="margin-top: 2.5rem;">2. Select Payment Method</h2>
+                    <div class="payment-selector">
+                        <div class="payment-option-card active" data-method="MWALLET" onclick="setPaymentMethod('MWALLET')">
+                            <!-- Mobile Account Icon -->
+                            <svg viewBox="0 0 24 24"><path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 18c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"></path></svg>
+                            <span>Mobile Wallet</span>
+                        </div>
+                        <div class="payment-option-card" data-method="MPAY" onclick="setPaymentMethod('MPAY')">
+                            <!-- Card Icon -->
+                            <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                            <span>Credit / Debit Card</span>
+                        </div>
+                        <div class="payment-option-card" data-method="OTC" onclick="setPaymentMethod('OTC')">
+                            <!-- Voucher Icon -->
+                            <svg viewBox="0 0 24 24"><path d="M22 19V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2zM8 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm8-10H8v2h8V7zm0 4H8v2h8v-2z"></path></svg>
+                            <span>Voucher / Shop</span>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Instructions text based on payment method -->
+                    <div id="paymentInstructions" style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 12px; padding: 15px; margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.5;">
+                        You will be redirected to the JazzCash Sandbox Portal to complete checkout using a Mobile Account.
+                    </div>
+
+                    <button type="submit" class="btn-checkout">Proceed to Secure Payment</button>
+                </form>
+            </div>
+
+            <!-- Right Panel: Order Summary -->
+            <div>
+                <div class="summary-box">
+                    <h2 style="font-size: 1.25rem; margin-bottom: 1rem; border-bottom: none; padding-bottom: 0;">Order Summary</h2>
+                    <div id="summaryItemsList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 1.5rem;">
+                        <!-- Dynamic items -->
+                    </div>
+                    <div class="summary-item-row">
+                        <span>Standard Shipping</span>
+                        <span style="color: var(--accent-green)">FREE</span>
+                    </div>
+                    <div class="summary-item-row total">
+                        <span>Total</span>
+                        <span id="summaryTotal">PKR 0</span>
+                    </div>
+                </div>
+                
+                <a href="/" class="btn-secondary" style="display: block; text-align: center; margin-top: 1rem;">Back to Storefront</a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let cart = [];
+        let totalAmount = 0;
+
+        function loadOrder() {
+            const savedCart = localStorage.getItem('cart');
+            if (savedCart) {
+                cart = JSON.parse(savedCart);
+            }
+
+            if (cart.length === 0) {
+                window.location.href = '/';
+                return;
+            }
+
+            const itemsList = document.getElementById('summaryItemsList');
+            itemsList.innerHTML = cart.map(item => `
+                <div class="summary-item-row" style="margin-bottom: 4px;">
+                    <span>${item.title}</span>
+                    <span style="font-weight: 600; color: #fff;">PKR ${item.price.toLocaleString()}</span>
+                </div>
+            `).join('');
+
+            totalAmount = cart.reduce((sum, item) => sum + item.price, 0);
+            document.getElementById('summaryTotal').innerText = `PKR ${totalAmount.toLocaleString()}`;
+            document.getElementById('formAmount').value = totalAmount;
+        }
+
+        function setPaymentMethod(method) {
+            // Update active option styling
+            const options = document.querySelectorAll('.payment-option-card');
+            options.forEach(opt => {
+                if (opt.getAttribute('data-method') === method) {
+                    opt.classList.add('active');
+                } else {
+                    opt.classList.remove('active');
+                }
+            });
+
+            // Update hidden input
+            document.getElementById('formPaymentMethod').value = method;
+
+            // Update instruction text
+            const instr = document.getElementById('paymentInstructions');
+            if (method === 'MWALLET') {
+                instr.innerText = "You will be redirected to the JazzCash Sandbox Portal to authenticate and pay using a JazzCash Mobile Wallet Account.";
+            } else if (method === 'MPAY') {
+                instr.innerText = "You will be redirected to the secure portal where you can enter test card credentials (VISA/Mastercard) to authenticate transaction.";
+            } else if (method === 'OTC') {
+                instr.innerText = "Voucher Payment: A 12-digit voucher code will be generated on redirect, allowing you to simulate cash payment at an agent location.";
+            }
+        }
+
+        // Intercept form submit to inject configurations from localStorage
+        document.getElementById('checkoutForm').addEventListener('submit', async function(e) {
+            // Load from localStorage
+            const localConfig = localStorage.getItem('jazzcash_config');
+            if (localConfig) {
+                const config = JSON.parse(localConfig);
+                document.getElementById('formMerchantId').value = config.merchantId || '';
+                document.getElementById('formPassword').value = config.password || '';
+                document.getElementById('formIntegritySalt').value = config.integritySalt || '';
+                document.getElementById('formPortalUrl').value = config.portalUrl || '';
+                return;
+            }
+
+            // Fallback (for local dev testing before credentials are saved to localStorage)
+            try {
+                e.preventDefault(); // Pause submission to fetch async
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                document.getElementById('formMerchantId').value = config.merchantId || '';
+                document.getElementById('formPassword').value = config.password || '';
+                document.getElementById('formIntegritySalt').value = config.integritySalt || '';
+                document.getElementById('formPortalUrl').value = config.portalUrl || '';
+                
+                // Resume submit
+                this.submit();
+            } catch (err) {
+                console.error('Error fetching fallback config:', err);
+                this.submit();
+            }
+        });
+
+        window.onload = loadOrder;
+    </script>
+</body>
+</html>

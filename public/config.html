@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaGear - JazzCash Sandbox Config</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navigation Header -->
+    <header class="header-nav">
+        <a href="/" class="brand-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-red)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Nova<span>Gear</span>
+        </a>
+        <nav class="nav-links">
+            <a href="/">Storefront</a>
+            <a href="/config.html" class="active">Credentials Settings</a>
+        </nav>
+    </header>
+
+    <main style="max-width: 800px;">
+        <section class="hero-section" style="margin-bottom: 2rem;">
+            <div class="badge-tag" style="background: rgba(248, 176, 24, 0.12); border-color: rgba(248, 176, 24, 0.3); color: var(--accent-yellow)">Gateway Credentials</div>
+            <h1>JazzCash Credentials Manager</h1>
+            <p>Setup your Sandbox Merchant details to generate verified secure transaction hashes.</p>
+        </section>
+
+        <div class="checkout-card">
+            <h2>Sandbox Configuration</h2>
+            
+            <div id="statusMessage" style="display:none; padding: 12px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 500;"></div>
+
+            <form id="configForm">
+                <div class="form-group">
+                    <label for="merchantId">Merchant ID</label>
+                    <input type="text" id="merchantId" name="merchantId" class="form-control" placeholder="E.g., MC12345" required>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; display: block;">Your unique Merchant ID from the Sandbox Portal.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Merchant Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Merchant Password" required>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; display: block;">The generated Merchant Password from your credentials settings.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="integritySalt">Integrity Salt / Shared Secret</label>
+                    <input type="password" id="integritySalt" name="integritySalt" class="form-control" placeholder="Integrity Salt / Shared Secret" required>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; display: block;">This key is crucial. Used for generating secure HMAC-SHA256 signatures. Do not expose client-side.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="portalUrl">Sandbox Portal URL</label>
+                    <input type="url" id="portalUrl" name="portalUrl" class="form-control" value="https://sandbox.jazzcash.com.pk/CustomerPortal/transaction/Pay" required>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; display: block;">Default Sandbox HTTP redirection payment handler.</span>
+                </div>
+
+                <button type="submit" class="btn-checkout" style="margin-top: 1.5rem;">Save Credentials</button>
+            </form>
+        </div>
+
+        <!-- Help Guide Info Box -->
+        <div class="debug-panel" style="margin-top: 2rem;">
+            <div class="debug-header" style="border: none; padding: 0; margin-bottom: 0.8rem;">
+                <h3 style="color: var(--accent-yellow)">💡 How to get these credentials?</h3>
+            </div>
+            <ol style="margin-left: 1.2rem; color: var(--text-secondary); font-size: 0.92rem; line-height: 1.6;">
+                <li>Register/Login at the <a href="https://sandbox.jazzcash.com.pk" target="_blank" style="color: #fff; text-decoration: underline;">JazzCash Sandbox Portal</a>.</li>
+                <li>Go to the **Credentials Manager** or **Sandbox settings** inside the dashboard.</li>
+                <li>Set your redirection **Return URL** to: <code style="background: #222; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #fff;">http://localhost:3000/payment/callback</code>.</li>
+                <li>Generate and copy your **Merchant ID**, **Password**, and **Integrity Salt**.</li>
+                <li>Paste them above and save them locally to start testing transaction redirection!</li>
+            </ol>
+        </div>
+    </main>
+
+    <script>
+        // Load existing config on mount
+        async function loadConfig() {
+            // First try loading from localStorage (stateless client side)
+            const localConfig = localStorage.getItem('jazzcash_config');
+            if (localConfig) {
+                const config = JSON.parse(localConfig);
+                if (config.merchantId) document.getElementById('merchantId').value = config.merchantId;
+                if (config.password) document.getElementById('password').value = config.password;
+                if (config.integritySalt) document.getElementById('integritySalt').value = config.integritySalt;
+                if (config.portalUrl) document.getElementById('portalUrl').value = config.portalUrl;
+                return;
+            }
+
+            // Fallback to server side config (for local dev)
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                if (config.merchantId) document.getElementById('merchantId').value = config.merchantId;
+                if (config.password) document.getElementById('password').value = config.password;
+                if (config.integritySalt) document.getElementById('integritySalt').value = config.integritySalt;
+                if (config.portalUrl) document.getElementById('portalUrl').value = config.portalUrl;
+            } catch (err) {
+                console.error('Error fetching configuration:', err);
+            }
+        }
+
+        // Form submit handler
+        document.getElementById('configForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const merchantId = document.getElementById('merchantId').value;
+            const password = document.getElementById('password').value;
+            const integritySalt = document.getElementById('integritySalt').value;
+            const portalUrl = document.getElementById('portalUrl').value;
+
+            const msgDiv = document.getElementById('statusMessage');
+
+            // Save to localStorage so it is available locally in the browser (stateless)
+            localStorage.setItem('jazzcash_config', JSON.stringify({ merchantId, password, integritySalt, portalUrl }));
+
+            try {
+                // Also attempt to save to server (will fail silently or print error on serverless read-only platforms, which is fine)
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ merchantId, password, integritySalt, portalUrl })
+                });
+                const data = await res.json();
+                
+                msgDiv.style.display = 'block';
+                msgDiv.style.background = 'rgba(16, 185, 129, 0.12)';
+                msgDiv.style.border = '1px solid var(--accent-green)';
+                msgDiv.style.color = 'var(--accent-green)';
+                msgDiv.innerText = 'Configuration saved successfully!';
+            } catch (err) {
+                // If server save fails (e.g. read-only serverless filesystem on Vercel), it is still saved in localStorage, so display success!
+                msgDiv.style.display = 'block';
+                msgDiv.style.background = 'rgba(16, 185, 129, 0.12)';
+                msgDiv.style.border = '1px solid var(--accent-green)';
+                msgDiv.style.color = 'var(--accent-green)';
+                msgDiv.innerText = 'Configuration saved locally in browser!';
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        window.onload = loadConfig;
+    </script>
+</body>
+</html>

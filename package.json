@@ -1,0 +1,14 @@
+{
+  "name": "jazzcash-sandbox-store",
+  "version": "1.0.0",
+  "description": "E-Commerce store for testing JazzCash Sandbox Integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "express": "^4.19.2"
+  }
+}
