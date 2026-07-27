@@ -158,18 +158,8 @@ app.post('/checkout/redirect', (req, res) => {
         ppmpf_5: '5'
     };
 
-    // Generate Secure Hash FIRST (before adding non-hash fields like pp_BankID, pp_ProductID)
+    // Generate Secure Hash
     payload.pp_SecureHash = generateSecureHash(payload, integritySalt);
-
-    // NOW add payment-type-specific fields that go in the form POST but are NOT in the hash
-    // (JazzCash's official CalculateHash does NOT include pp_BankID or pp_ProductID)
-    if (paymentMethod === 'MWALLET' || paymentMethod === 'OTC') {
-        payload.pp_BankID = 'TBANK';
-        payload.pp_ProductID = 'RETL';
-    } else if (paymentMethod === 'MPAY') {
-        payload.pp_BankID = '';
-        payload.pp_ProductID = '';
-    }
 
     console.log('[DEBUG] Form redirect payload:', payload);
     console.log('[DEBUG] Target portal URL:', targetPortalUrl);
