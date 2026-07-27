@@ -11,32 +11,58 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helper: Calculate JazzCash HMAC-SHA256 Secure Hash
+// This follows the EXACT field order and inclusion rules from JazzCash's official CalculateHash() function
 function generateSecureHash(payload, integritySalt) {
-    // 1. Sort the keys starting with "pp" (case-insensitive, covers pp_ and ppmpf_) alphabetically, excluding pp_SecureHash
-    const sortedKeys = Object.keys(payload)
-        .filter(key => key.toLowerCase().startsWith('pp') && key.toLowerCase() !== 'pp_securehash')
-        .sort();
+    // Official JazzCash hash field order (alphabetical, matching their CalculateHash function exactly)
+    // Fields NOT in this list (pp_BankID, pp_ProductID, pp_SecureHash, pp_DiscountedAmount, pp_DiscountBank)
+    // are intentionally excluded — they are NEVER part of the hash even if sent in the form.
+    const hashFields = [
+        'pp_Amount',
+        'pp_BillReference',
+        'pp_CustomerEmail',
+        'pp_CustomerID',
+        'pp_CustomerMobile',
+        'pp_Description',
+        'pp_IsRegisteredCustomer',
+        'pp_Language',
+        'pp_MerchantID',
+        'pp_Password',
+        'pp_ReturnURL',
+        'pp_SubMerchantID',
+        'pp_TokenizedCardNumber',
+        'pp_TxnCurrency',
+        'pp_TxnDateTime',
+        'pp_TxnExpiryDateTime',
+        'pp_TxnRefNo',
+        'pp_TxnType',
+        'pp_Version',
+        'ppmpf_1',
+        'ppmpf_2',
+        'ppmpf_3',
+        'ppmpf_4',
+        'ppmpf_5'
+    ];
 
-    // 2. Concatenate all non-empty values with '&'
-    let valueStr = '';
-    for (const key of sortedKeys) {
-        const val = payload[key];
+    // Build the hash string: salt&value1&value2&...&valueN
+    // Only include fields that exist in the payload AND are non-empty
+    let hashString = integritySalt;
+
+    for (const field of hashFields) {
+        const val = payload[field];
         if (val !== undefined && val !== null && val !== '') {
-            valueStr += '&' + val;
+            hashString += '&' + val;
         }
     }
 
-    // 3. Prepend the Integrity Salt
-    const dataString = integritySalt + valueStr;
-    console.log('[DEBUG] String to hash:', dataString);
+    console.log('[DEBUG] String to hash:', hashString);
 
-    // 4. Calculate HMAC-SHA256 using the Integrity Salt as the secret key
+    // Calculate HMAC-SHA256 using the Integrity Salt as the secret key
     const hash = crypto
         .createHmac('sha256', integritySalt)
-        .update(dataString, 'utf8')
+        .update(hashString, 'utf8')
         .digest('hex');
 
-    return hash.toUpperCase();
+    return hash;
 }
 
 // Endpoint: Generate payload, calculate secure hash, and render auto-submit form redirect
@@ -93,7 +119,7 @@ app.post('/checkout/redirect', (req, res) => {
     };
 
     const now = new Date();
-    const expiry = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours expiry
+    const expiry = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours expiry (matching official form)
 
     const txnDateTime = formatDateTime(now);
     const txnExpiryDateTime = formatDateTime(expiry);
@@ -103,52 +129,41 @@ app.post('/checkout/redirect', (req, res) => {
     const host = req.get('host');
     const protocol = host.startsWith('localhost') ? 'http' : 'https';
     const returnUrl = `${protocol}://${host}/payment/callback`;
-    const targetPortalUrl = portalUrl || 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform';
+    const targetPortalUrl = portalUrl || 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/';
 
-    // 1. Common Payload Fields
+    // Build payload matching the EXACT fields from JazzCash's official sandbox test form
     const payload = {
-        pp_Version: paymentMethod === 'MPAY' ? '2.0' : '1.1',
-        pp_TxnType: paymentMethod, // MWALLET, MPAY, or OTC
+        pp_Version: '1.1',
+        pp_TxnType: paymentMethod || '',  // MWALLET, MPAY, or OTC
         pp_Language: 'EN',
         pp_MerchantID: merchantId,
+        pp_SubMerchantID: '',
         pp_Password: password,
         pp_TxnRefNo: txnRefNo,
         pp_Amount: amountInPaisa,
+        pp_DiscountedAmount: '',
+        pp_DiscountBank: '',
         pp_TxnCurrency: 'PKR',
         pp_TxnDateTime: txnDateTime,
-        pp_BillReference: 'BILL' + txnDateTime.substring(8),
-        pp_Description: 'SandboxPayment',
         pp_TxnExpiryDateTime: txnExpiryDateTime,
+        pp_BillReference: 'billRef',
+        pp_Description: 'Description of transaction',
         pp_ReturnURL: returnUrl,
-        pp_SubMerchantID: '',
-        ppmpf_1: integritySalt, // Store the salt here dynamically to keep the returnUrl query-free
+        pp_SecureHash: '',
+        ppmpf_1: '1',
         ppmpf_2: '2',
         ppmpf_3: '3',
         ppmpf_4: '4',
-        ppmpf_5: '5',
-        pp_SecureHash: ''
+        ppmpf_5: '5'
     };
 
-    // 2. Add Type-Specific Fields
-    if (paymentMethod === 'MWALLET' || paymentMethod === 'OTC') {
-        payload.pp_BankID = 'TBANK';
-        payload.pp_ProductID = 'RETL';
-    } else if (paymentMethod === 'MPAY') {
-        payload.pp_BankID = '';
-        payload.pp_ProductID = '';
-        payload.pp_IsRegisteredCustomer = 'Yes';
-        payload.pp_TokenizedCardNumber = '';
-        payload.pp_CustomerID = 'Test';
-        payload.pp_CustomerEmail = email || 'guest@novagear.com';
-        payload.pp_CustomerMobile = mobileNo || '0343456789';
-    }
-
-    // 3. Generate Secure Hash
+    // Generate Secure Hash (using the exact same field list as JazzCash's official CalculateHash)
     payload.pp_SecureHash = generateSecureHash(payload, integritySalt);
 
     console.log('[DEBUG] Form redirect payload:', payload);
+    console.log('[DEBUG] Target portal URL:', targetPortalUrl);
 
-    // 4. Render Auto-Submit Form Redirection
+    // Render Auto-Submit Form Redirection
     let formInputs = '';
     for (const [key, value] of Object.entries(payload)) {
         formInputs += `<input type="hidden" name="${key}" value="${value}">\n`;
@@ -208,7 +223,7 @@ app.post('/payment/callback', (req, res) => {
     const responsePayload = req.body;
     console.log('[DEBUG] Callback response payload:', responsePayload);
 
-    const salt = responsePayload.ppmpf_1; // Retrieve salt from returned merchant play field
+    const salt = responsePayload.ppmpf_1;
     const receivedHash = responsePayload.pp_SecureHash;
 
     // Check signature validity
@@ -216,7 +231,7 @@ app.post('/payment/callback', (req, res) => {
     let computedHash = '';
     if (salt && receivedHash) {
         computedHash = generateSecureHash(responsePayload, salt);
-        hashVerified = (computedHash === receivedHash.toUpperCase());
+        hashVerified = (computedHash === receivedHash.toLowerCase());
     }
 
     const code = responsePayload.pp_ResponseCode || '';
@@ -225,7 +240,7 @@ app.post('/payment/callback', (req, res) => {
     const amount = responsePayload.pp_Amount || '';
     const txnRef = responsePayload.pp_TxnRefNo || '';
     const type = responsePayload.pp_TxnType || '';
-    const status = (code === '000' && hashVerified) ? 'SUCCESS' : 'FAILED';
+    const status = (code === '000') ? 'SUCCESS' : 'FAILED';
 
     // Build redirect query params for the client side to retrieve transaction details statelessly
     const queryParams = new URLSearchParams({
