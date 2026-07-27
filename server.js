@@ -103,7 +103,7 @@ app.post('/checkout/redirect', (req, res) => {
     const host = req.get('host');
     const protocol = host.startsWith('localhost') ? 'http' : 'https';
     const returnUrl = `${protocol}://${host}/payment/callback`;
-    const targetPortalUrl = portalUrl || 'https://sandbox.jazzcash.com.pk/CustomerPortal/transaction/Pay';
+    const targetPortalUrl = portalUrl || 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform';
 
     // 1. Common Payload Fields
     const payload = {
