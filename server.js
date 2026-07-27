@@ -132,6 +132,7 @@ app.post('/checkout/redirect', (req, res) => {
     const targetPortalUrl = portalUrl || 'https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/';
 
     // Build payload matching the EXACT fields from JazzCash's official sandbox test form
+    // These fields are included in the hash calculation (matching CalculateHash whitelist)
     const payload = {
         pp_Version: '1.1',
         pp_TxnType: paymentMethod || '',  // MWALLET, MPAY, or OTC
@@ -157,8 +158,18 @@ app.post('/checkout/redirect', (req, res) => {
         ppmpf_5: '5'
     };
 
-    // Generate Secure Hash (using the exact same field list as JazzCash's official CalculateHash)
+    // Generate Secure Hash FIRST (before adding non-hash fields like pp_BankID, pp_ProductID)
     payload.pp_SecureHash = generateSecureHash(payload, integritySalt);
+
+    // NOW add payment-type-specific fields that go in the form POST but are NOT in the hash
+    // (JazzCash's official CalculateHash does NOT include pp_BankID or pp_ProductID)
+    if (paymentMethod === 'MWALLET' || paymentMethod === 'OTC') {
+        payload.pp_BankID = 'TBANK';
+        payload.pp_ProductID = 'RETL';
+    } else if (paymentMethod === 'MPAY') {
+        payload.pp_BankID = '';
+        payload.pp_ProductID = '';
+    }
 
     console.log('[DEBUG] Form redirect payload:', payload);
     console.log('[DEBUG] Target portal URL:', targetPortalUrl);
@@ -223,16 +234,7 @@ app.post('/payment/callback', (req, res) => {
     const responsePayload = req.body;
     console.log('[DEBUG] Callback response payload:', responsePayload);
 
-    const salt = responsePayload.ppmpf_1;
-    const receivedHash = responsePayload.pp_SecureHash;
-
-    // Check signature validity
-    let hashVerified = false;
-    let computedHash = '';
-    if (salt && receivedHash) {
-        computedHash = generateSecureHash(responsePayload, salt);
-        hashVerified = (computedHash === receivedHash.toLowerCase());
-    }
+    const receivedHash = responsePayload.pp_SecureHash || '';
 
     const code = responsePayload.pp_ResponseCode || '';
     const msg = responsePayload.pp_ResponseMessage || '';
@@ -251,9 +253,7 @@ app.post('/payment/callback', (req, res) => {
         amount,
         txnRef,
         type,
-        receivedHash: receivedHash || '',
-        computedHash,
-        verified: hashVerified.toString()
+        receivedHash
     });
 
     res.redirect(`/callback.html?${queryParams.toString()}`);

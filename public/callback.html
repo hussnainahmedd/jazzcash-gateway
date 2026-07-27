@@ -58,8 +58,6 @@
                 const txnRef = params.get('txnRef') || 'N/A';
                 const type = params.get('type') || 'N/A';
                 const receivedHash = params.get('receivedHash') || 'N/A';
-                const computedHash = params.get('computedHash') || 'N/A';
-                const verified = params.get('verified') === 'true';
 
                 const paymentMethodNames = {
                     'MWALLET': 'JazzCash Mobile Wallet',
@@ -125,21 +123,18 @@
                     </div>
                 `;
 
-                const hashStatusClass = verified ? 'verified' : 'unverified';
-                const hashStatusText = verified ? 'Verified Authentic' : 'Verification Failed (Tampered / Config Error)';
-                
                 contentHtml += `
                     <div class="debug-panel">
                         <div class="debug-header">
                             <h3>🔍 Sandbox Debug Logger</h3>
-                            <div class="debug-badge ${hashStatusClass}">${hashStatusText}</div>
+                            <div class="debug-badge ${isSuccess ? 'verified' : 'unverified'}">${isSuccess ? 'Transaction Successful' : 'Transaction Failed (Code: ' + code + ')'}</div>
                         </div>
                         <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
-                            When redirection occurs, JazzCash sends back a secure hash. We calculate the HMAC-SHA256 signature server-side using your stored integrity salt to verify the postback's authenticity.
+                            This panel shows the raw response from JazzCash's Sandbox portal after the payment redirection.
                         </p>
                         
-                        <div class="debug-section-title">Hash Verification Details</div>
-                        <pre>Received Hash:  ${receivedHash}\nComputed Hash:  ${computedHash}\nVerification:   ${verified ? 'MATCHED (Signature OK)' : 'MISMATCHED (Signature FAILED)'}</pre>
+                        <div class="debug-section-title">Response Details</div>
+                        <pre>Response Code:    ${code}\nResponse Message: ${msg}\nSecure Hash:      ${receivedHash}\nPayment Type:     ${type}\nTransaction Ref:  ${txnRef}\nRRN:              ${rrn}</pre>
                     </div>
                 `;
 
