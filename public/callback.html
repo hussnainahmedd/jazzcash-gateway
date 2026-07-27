@@ -51,6 +51,8 @@
                 }
 
                 const isSuccess = status === 'SUCCESS';
+                const isPending = status === 'PENDING';
+                const isOk = isSuccess || isPending;
                 const code = params.get('code') || 'N/A';
                 const msg = params.get('msg') || 'N/A';
                 const rrn = params.get('rrn') || 'N/A';
@@ -72,8 +74,17 @@
                         <div class="status-badge success">
                             <svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>
                         </div>
-                        <h1 class="status-title">Payment Successful</h1>
-                        <p class="status-message">Thank you for your order! Your payment was processed successfully in the sandbox environment.</p>
+                        <h1 class="status-title">Payment Successful!</h1>
+                        <p class="status-message">Thank you for your order! Your payment was processed successfully.</p>
+                    `;
+                    localStorage.removeItem('cart');
+                } else if (isPending) {
+                    contentHtml += `
+                        <div class="status-badge success" style="background: rgba(255, 193, 7, 0.15); border-color: #ffc107;">
+                            <svg viewBox="0 0 24 24" fill="#ffc107"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"></path></svg>
+                        </div>
+                        <h1 class="status-title" style="color: #ffc107;">Voucher Placed Successfully!</h1>
+                        <p class="status-message">Your order has been placed. Please pay over-the-counter at any JazzCash shop or retailer using Ref No: <strong>${rrn}</strong></p>
                     `;
                     localStorage.removeItem('cart');
                 } else {
@@ -88,6 +99,7 @@
 
                 const amountInPkr = amount ? (parseFloat(amount) / 100) : 0;
                 const pMethod = paymentMethodNames[type] || 'JazzCash';
+                const statusColor = isSuccess ? 'var(--accent-green)' : (isPending ? '#ffc107' : 'var(--accent-red)');
 
                 contentHtml += `
                     <div class="receipt-card">
@@ -109,7 +121,7 @@
                         </div>
                         <div class="receipt-row">
                             <span>Response Code</span>
-                            <span style="font-family: monospace; font-weight: 700; color: ${isSuccess ? 'var(--accent-green)' : 'var(--accent-red)'}">${code}</span>
+                            <span style="font-family: monospace; font-weight: 700; color: ${statusColor}">${code}</span>
                         </div>
                         <div class="receipt-row">
                             <span>Response Message</span>
@@ -127,7 +139,7 @@
                     <div class="debug-panel">
                         <div class="debug-header">
                             <h3>🔍 Sandbox Debug Logger</h3>
-                            <div class="debug-badge ${isSuccess ? 'verified' : 'unverified'}">${isSuccess ? 'Transaction Successful' : 'Transaction Failed (Code: ' + code + ')'}</div>
+                            <div class="debug-badge ${isOk ? 'verified' : 'unverified'}">${isSuccess ? 'Transaction Successful' : (isPending ? 'Voucher Placed (Code 124)' : 'Transaction Failed (Code ' + code + ')')}</div>
                         </div>
                         <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
                             This panel shows the raw response from JazzCash's Sandbox portal after the payment redirection.

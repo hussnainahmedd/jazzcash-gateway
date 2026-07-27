@@ -233,7 +233,9 @@ app.post('/payment/callback', (req, res) => {
     const amount = responsePayload.pp_Amount || '';
     const txnRef = responsePayload.pp_TxnRefNo || '';
     const type = responsePayload.pp_TxnType || '';
-    const status = (code === '000') ? 'SUCCESS' : 'FAILED';
+    const isSuccess = (code === '000');
+    const isPending = (code === '124' || code === '121');
+    const status = isSuccess ? 'SUCCESS' : (isPending ? 'PENDING' : 'FAILED');
 
     // Build redirect query params for the client side to retrieve transaction details statelessly
     const queryParams = new URLSearchParams({
