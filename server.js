@@ -57,12 +57,13 @@ function generateSecureHash(payload, integritySalt) {
     console.log('[DEBUG] String to hash:', hashString);
 
     // Calculate HMAC-SHA256 using the Integrity Salt as the secret key
+    // JazzCash requires the hash in UPPERCASE hexadecimal format
     const hash = crypto
         .createHmac('sha256', integritySalt)
         .update(hashString, 'utf8')
         .digest('hex');
 
-    return hash;
+    return hash.toUpperCase();
 }
 
 // Endpoint: Generate payload, calculate secure hash, and render auto-submit form redirect
