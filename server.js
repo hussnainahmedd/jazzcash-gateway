@@ -65,16 +65,31 @@ app.post('/checkout/redirect', (req, res) => {
     // Amount needs to be in Paisa (multiplied by 100, no decimals)
     const amountInPaisa = Math.round(parseFloat(amount) * 100).toString();
 
-    // Date formatting helper: yyyyMMddHHmmss
+    // Date formatting helper: yyyyMMddHHmmss (forces Pakistan standard timezone: Asia/Karachi)
     const formatDateTime = (date) => {
-        const pad = (num) => String(num).padStart(2, '0');
-        const yyyy = date.getFullYear();
-        const MM = pad(date.getMonth() + 1);
-        const dd = pad(date.getDate());
-        const HH = pad(date.getHours());
-        const mm = pad(date.getMinutes());
-        const ss = pad(date.getSeconds());
-        return `${yyyy}${MM}${dd}${HH}${mm}${ss}`;
+        const options = {
+            timeZone: 'Asia/Karachi',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        };
+        const formatter = new Intl.DateTimeFormat('en-US', options);
+        const parts = formatter.formatToParts(date);
+        const getPart = (type) => parts.find(p => p.type === type).value;
+        
+        const yyyy = getPart('year');
+        const MM = getPart('month');
+        const dd = getPart('day');
+        const HH = getPart('hour');
+        const mm = getPart('minute');
+        const ss = getPart('second');
+
+        const HH_fixed = HH === '24' ? '00' : HH;
+        return `${yyyy}${MM}${dd}${HH_fixed}${mm}${ss}`;
     };
 
     const now = new Date();
