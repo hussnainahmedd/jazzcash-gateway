@@ -87,7 +87,7 @@ app.post('/checkout/redirect', (req, res) => {
     // Determine host protocol and address dynamically (Vercel uses HTTPS, local uses HTTP)
     const host = req.get('host');
     const protocol = host.startsWith('localhost') ? 'http' : 'https';
-    const returnUrl = `${protocol}://${host}/payment/callback?salt=${integritySalt}`;
+    const returnUrl = `${protocol}://${host}/payment/callback`;
     const targetPortalUrl = portalUrl || 'https://sandbox.jazzcash.com.pk/CustomerPortal/transaction/Pay';
 
     // 1. Common Payload Fields
@@ -106,7 +106,7 @@ app.post('/checkout/redirect', (req, res) => {
         pp_TxnExpiryDateTime: txnExpiryDateTime,
         pp_ReturnURL: returnUrl,
         pp_SubMerchantID: '',
-        ppmpf_1: '1',
+        ppmpf_1: integritySalt, // Store the salt here dynamically to keep the returnUrl query-free
         ppmpf_2: '2',
         ppmpf_3: '3',
         ppmpf_4: '4',
@@ -193,7 +193,7 @@ app.post('/payment/callback', (req, res) => {
     const responsePayload = req.body;
     console.log('[DEBUG] Callback response payload:', responsePayload);
 
-    const salt = req.query.salt;
+    const salt = responsePayload.ppmpf_1; // Retrieve salt from returned merchant play field
     const receivedHash = responsePayload.pp_SecureHash;
 
     // Check signature validity
